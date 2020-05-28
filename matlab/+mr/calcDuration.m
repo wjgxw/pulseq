@@ -39,6 +39,8 @@ for i=1:length(varargin)
 %             duration=max(duration, event.riseTime+ event.flatTime +event.fallTime);
         case {'output','trigger'} 
             duration=max(duration, event.delay + event.duration);
+        case {'label','inclabel'}
+            duration=duration;
     end
 end
 
