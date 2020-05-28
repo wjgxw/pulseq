@@ -32,6 +32,8 @@ obj.rfLibrary = mr.EventLibrary();
 obj.adcLibrary = mr.EventLibrary();
 obj.delayLibrary = mr.EventLibrary();
 obj.trigLibrary = mr.EventLibrary();
+obj.labelLibrary = mr.EventLibrary();
+obj.inclabelLibrary = mr.EventLibrary();
 
 % Load data from file
 while true
@@ -92,6 +94,10 @@ while true
             obj.extensionLibrary = readEvents(fid, [1 1 1]);
         case 'extension TRIGGERS 1' % this is not the best style -- we will only be able to load our own generated files...
             obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6]);
+        case 'extension LABELSET 2' % this is not the best style -- we will only be able to load our own generated files...
+            obj.labelLibrary = readEvents(fid, [1 1 1 1 1 1 1 1 1 1 1]); 
+        case 'extension LABELINC 3' % this is not the best style -- we will only be able to load our own generated files...
+            obj.inclabelLibrary = readEvents(fid,[1 1 1 1 1 1 1 1 1 1 1]);    
         otherwise
             error('Unknown section code: %s', section);
     end
@@ -202,17 +208,33 @@ return
             eventLibrary = mr.EventLibrary();
         end
         line = fgetl(fid);
+        flag = true;
         while ischar(line) && ~(isempty(line) || line(1) == '#')
+            str = char(sscanf(line, '%*d %*d %s'))';
             data = sscanf(line,'%f')';
             id = data(1);
-            data = scale.*data(2:end);
+            test = find(strcmp(["SLC","SEG","REP","NAV","AVG","ECO","SET","PHS","SMS","LIN","PAR"],str));
+            if(~isempty(test))
+                extdata = [id NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN];
+                extdata(1+test)= data(2);
+                flag = false;
+                line=fgetl(fid);
+                str = char(sscanf(line, '%*d %*d %s'))';
+            end
+            if flag == true
+                data = scale.*data(2:end);
+            else
+                data = scale.*extdata(2:end);
+            end
             if nargin < 3
                 eventLibrary.insert(id, data);
             else
                 eventLibrary.insert(id, data, type);
             end
-            
-            line=fgetl(fid);
+
+            if (flag == true)
+                line=fgetl(fid);
+            end
         end
     end
 
