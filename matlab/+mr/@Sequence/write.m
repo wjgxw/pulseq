@@ -148,6 +148,40 @@ if ~isempty(obj.trigLibrary.keys)
     fprintf(fid, '\n');
 end
 
+if ~isempty(obj.labelLibrary.keys)
+    fprintf(fid, '# Extension specification for setting labels:\n');
+    fprintf(fid, '# id set labelstring\n');
+    fprintf(fid, 'extension LABELSET 2\n'); % fixme: extension ID 2 is hardcoded here for labels
+    keys = obj.labelLibrary.keys;
+    for k = keys
+        in=find(~isnan(obj.labelLibrary.data(k).array));
+        count = length(in);
+        Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
+        for i=1:length(in)
+            fprintf(fid, '%d %d %s\n', ... 
+                k, obj.labelLibrary.data(k).array(in(i)), Mystr{in(i)});
+        end
+    end
+    fprintf(fid, '\n');
+end
+
+if ~isempty(obj.inclabelLibrary.keys)
+    fprintf(fid, '# Extension specification for incrementing labels:\n');
+    fprintf(fid, '# id inc labelstring \n');
+    fprintf(fid, 'extension LABELINC 3\n'); % fixme: extension ID 3 is hardcoded here for incrementing labels
+    keys = obj.inclabelLibrary.keys;
+    for k = keys
+         in=find(~isnan(obj.inclabelLibrary.data(k).array));
+         count = length(in);
+         Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
+         for i=1:length(in)
+             fprintf(fid, '%d %d %s\n', ...
+                 k, obj.inclabelLibrary.data(k).array(in(i)), Mystr{in(i)} );
+         end
+    end
+    fprintf(fid, '\n');
+end
+
 if ~isempty(obj.shapeLibrary.keys)
     fprintf(fid, '# Sequence Shapes\n');
     fprintf(fid, '[SHAPES]\n\n');
