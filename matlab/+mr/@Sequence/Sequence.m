@@ -47,6 +47,8 @@ classdef Sequence < handle
         adcLibrary;       % Library of ADC readouts
         delayLibrary;     % Library of delay events
         trigLibrary;      % Library of trigger events ( referenced from the extentions library )
+        labelLibrary;     % Library of Label events ( reference from the extensions library )
+        inclabelLibrary;  % Library of IncLabel events ( reference from the extensions library )        
         extensionLibrary; % Library of extension events. Extension events form single-linked zero-terminated lists
         shapeLibrary;     % Library of compressed shapes
         sys;
@@ -65,6 +67,8 @@ classdef Sequence < handle
             obj.adcLibrary = mr.EventLibrary();
             obj.delayLibrary = mr.EventLibrary();
             obj.trigLibrary = mr.EventLibrary();
+            obj.labelLibrary = mr.EventLibrary();
+            obj.inclabelLibrary = mr.EventLibrary();
             obj.extensionLibrary = mr.EventLibrary();
             obj.blockEvents = {};
             
@@ -403,6 +407,34 @@ classdef Sequence < handle
                         ext=struct('type', 1, 'ref', id);
                         extensions=[extensions ext];
                         duration=max(duration,event.delay+event.duration);
+                    case 'label'
+                        event_type=find(strcmp(event.type,{'label'}));
+                        if (event_type==1)
+                            data=[event.slc event.seg event.rep event.nav event.avg event.eco event.set event.phs event.sms event.lin event.par];
+                            [id,found] = obj.labelLibrary.find(data);
+                            if ~found
+                                obj.labelLibrary.insert(id,data);
+                            end
+                        end
+                        %obj.blockEvents{index}(7)=id; % now we just
+                        % collect the list of extension objects and we will
+                        % add it to the event table later
+                        ext=struct('type', 2, 'ref', id);
+                        extensions=[extensions ext];
+                    case 'inclabel'
+                        event_type=find(strcmp(event.type,{'inclabel'}));
+                        if (event_type==1)
+                            data=[event.slc event.seg event.rep event.nav event.avg event.eco event.set event.phs event.sms event.lin event.par];
+                            [id,found] = obj.inclabelLibrary.find(data);
+                            if ~found
+                                obj.inclabelLibrary.insert(id,data);
+                            end
+                        end
+                        %obj.blockEvents{index}(7)=id; % now we just
+                        % collect the list of extension objects and we will
+                        % add it to the event table later
+                        ext=struct('type', 3, 'ref', id);
+                        extensions=[extensions ext];
                 end
             end
             
@@ -546,6 +578,64 @@ classdef Sequence < handle
                         % generate extension-specific name
                         filedName=sprintf('trig%d', extData(2));
                         block.(filedName)=trig;
+                    elseif (extData(1)==2) % label
+                        data = obj.labelLibrary.data(extData(2)).array;
+                        label.type='label';
+                        switch data(2)
+                            case 'SLC'
+                                label.slc=data(1);
+                            case 'SEG'
+                                label.seg=data(1);
+                            case 'REP'
+                                label.rep=data(1);
+                            case 'NAV'
+                                label.nav=data(1);
+                            case 'AVG'
+                                label.avg=data(1);
+                            case 'SET'
+                                label.set=data(1);
+                            case 'ECO'
+                                label.eco=data(1);
+                            case 'PHS'
+                                label.phs=data(1);
+                            case 'SMS'
+                                label.sms=data(1);
+                            case 'LIN'
+                                label.lin=data(1);
+                            case 'PAR'
+                                label.par=data(1);
+                        end
+                        filedName=sprintf('label%d',extData(2));
+                        block.(filedName)=label;
+                    elseif (extData(1)==3) % inclabel
+                        data = obj.inclabelLibrary.data(extData(2)).array;
+                        inclabel.type='inclabel';
+                        switch data(2) 
+                            case 'SLC'
+                                inclabel.slc=data(1);
+                            case 'SEG'
+                                inclabel.seg=data(1);
+                            case 'REP'
+                                inclabel.rep=data(1);
+                            case 'NAV'
+                                inclabel.nav=data(1);
+                            case 'AVG'
+                                inclabel.avg=data(1);
+                            case 'SET'
+                                inclabel.set=data(1);
+                            case 'ECO'
+                                inclabel.eco=data(1);
+                            case 'PHS'
+                                inclabel.phs=data(1);
+                            case 'SMS'
+                                inclabel.sms=data(1);
+                            case 'LIN'
+                                inclabel.lin=data(1);
+                            case 'PAR'
+                                inclabel.par=data(1);    
+                        end
+                        filedName=sprintf('inclabel%d',extData(2));
+                        block.(filedName)=inclabel;    
                     else
                         error('unknown extension ID %d', extData(1));
                     end
