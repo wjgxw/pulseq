@@ -21,7 +21,8 @@ if isempty(parser)
     addOptional(parser, 'sms', NaN, @isnumeric);
     addOptional(parser, 'lin', NaN, @isnumeric);
     addOptional(parser, 'par', NaN, @isnumeric);
-%    addOptional(parser, 'system', mr.opts(), @isstruct); 
+%    addOptional(parser, 'system', mr.opts(), @isstruct);
+    addParameter(parser, 'tag', NaN, @isnumeric); %XG: let's make extension more robust
 end
 
 if nargin<1
@@ -50,6 +51,7 @@ switch(str)
             assert(~(opt.sms ~= 0 && opt.sms ~= 1 && ~isnan(opt.sms)),'unknown value for SMS = %d \n', opt.sms);
         label.lin = opt.lin;
         label.par = opt.par;
+        if isnan(opt.tag); label.tag = 2; else; label.tag = opt.tag;end %default 2, compatible for the previous version
     case 'INC'
         label.type = 'inclabel';
         label.slc = opt.slc;
@@ -65,6 +67,8 @@ switch(str)
             assert(isnan(opt.sms),'Flags cannot be incremented. Use Set.\n');
         label.lin = opt.lin;
         label.par = opt.par;
+        label.tag = opt.tag;
+        if isnan(opt.tag); label.tag = 3; else; label.tag = opt.tag;end %default 3, compatible for the previous version
     otherwise
         disp('Unknown str')
 end

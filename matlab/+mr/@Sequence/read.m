@@ -34,14 +34,25 @@ obj.delayLibrary = mr.EventLibrary();
 obj.trigLibrary = mr.EventLibrary();
 obj.labelLibrary = mr.EventLibrary();
 obj.inclabelLibrary = mr.EventLibrary();
-
+tag_used=char(zeros(1,0));
 % Load data from file
 while true
     section = skipComments(fid);
     if section == -1
         break
     end
+
+    extension=regexp(section,'extension (\w+) (\d+)','tokens');
+    if ~isempty(extension)
+        section=extension{1}{1};        
+        if length(extension{1}{2})>1
+            error('2 digit identifier (tag) is not support for Extension specifications\n ');
+        else
+            tag_used=[tag_used,extension{1}{2}];
+        end
+    end
     
+        
     switch section
         case '[DEFINITIONS]'
             obj.definitions = readDefinitions(fid);
@@ -92,18 +103,27 @@ while true
             obj.shapeLibrary = readShapes(fid);
         case '[EXTENSIONS]'
             obj.extensionLibrary = readEvents(fid, [1 1 1]);
-        case 'extension TRIGGERS 1' % this is not the best style -- we will only be able to load our own generated files...
-            obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6]);
-        case 'extension LABELSET 2' % this is not the best style -- we will only be able to load our own generated files...
-            obj.labelLibrary = readEvents(fid, [1 1 1 1 1 1 1 1 1 1 1]); 
-        case 'extension LABELINC 3' % this is not the best style -- we will only be able to load our own generated files...
-            obj.inclabelLibrary = readEvents(fid,[1 1 1 1 1 1 1 1 1 1 1]);    
+%         case 'extension TRIGGERS 1' % this is not the best style -- we will only be able to load our own generated files...
+%             obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6]);
+%         case 'extension LABELSET 2' % this is not the best style -- we will only be able to load our own generated files...
+%             obj.labelLibrary = readEvents(fid, [1 1 1 1 1 1 1 1 1 1 1]); 
+%         case 'extension LABELINC 3' % this is not the best style -- we will only be able to load our own generated files...
+%             obj.inclabelLibrary = readEvents(fid,[1 1 1 1 1 1 1 1 1 1 1]);    
+        case 'TRIGGERS'
+            obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6],extension{1}{2});
+        case 'LABELSET'
+            obj.labelLibrary = readEvents(fid, [1 1 1 1 1 1 1 1 1 1 1],extension{1}{2});
+        case 'LABELINC'
+            obj.inclabelLibrary = readEvents(fid,[1 1 1 1 1 1 1 1 1 1 1],extension{1}{2});
         otherwise
             error('Unknown section code: %s', section);
-    end
+    end   
 end
 fclose(fid);
 
+if ~strcmp(unique(tag_used),tag_used)
+    error('duplicate identifier (tag) exists in different Extension specifications\n');
+end
 gradChannels={'gx','gy','gz'};
 
 if detectRFuse

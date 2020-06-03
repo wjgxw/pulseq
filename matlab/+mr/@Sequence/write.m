@@ -136,10 +136,26 @@ if ~isempty(obj.extensionLibrary.keys)
     fprintf(fid, '\n');
 end
 
+% check no error/duplicate extension ID used.
+assert(isempty(obj.trigLibrary.type) || all(unique(obj.trigLibrary.type)==obj.trigLibrary.type(1)),...
+    'different identifier (tag) used for the same Extension specification: trigLibrary');
+assert(isempty(obj.labelLibrary.type) || all(unique(obj.labelLibrary.type)==obj.labelLibrary.type(1)),...
+    'different identifier (tag) used for the same Extension specification: labelLibrary');
+assert(isempty(obj.inclabelLibrary.type) || all(unique(obj.inclabelLibrary.type)==obj.inclabelLibrary.type(1)),...
+    'different identifier (tag) used for the same Extension specification: inclabelLibrary');
+
+assert(strcmp([unique(obj.trigLibrary.type),unique(obj.labelLibrary.type),unique(obj.inclabelLibrary.type)],...
+        unique([unique(obj.trigLibrary.type),unique(obj.labelLibrary.type),unique(obj.inclabelLibrary.type)])),...
+        sprintf(['duplicate identifier (tag) exists in different Extension specifications; \n',...
+        'by default: trigLibrary 1, labelLibrary 2, inclabelLibrary 3']));
+% 
+
 if ~isempty(obj.trigLibrary.keys)
     fprintf(fid, '# Extension specification for digital output and input triggers:\n');
     fprintf(fid, '# id type channel delay (us) duration (us)\n');
-    fprintf(fid, 'extension TRIGGERS 1\n'); % fixme: extension ID 1 is hardcoded here for triggers
+%     fprintf(fid, 'extension TRIGGERS 1\n'); % fixme: extension ID 1 is hardcoded here for triggers
+    fprintf(fid, ['extension TRIGGERS ',obj.trigLibrary.type(1),'\n']);
+
     keys = obj.trigLibrary.keys;
     for k = keys
         fprintf(fid, '%d %d %d %d %d\n', ...
@@ -151,7 +167,8 @@ end
 if ~isempty(obj.labelLibrary.keys)
     fprintf(fid, '# Extension specification for setting labels:\n');
     fprintf(fid, '# id set labelstring\n');
-    fprintf(fid, 'extension LABELSET 2\n'); % fixme: extension ID 2 is hardcoded here for labels
+%     fprintf(fid, 'extension LABELSET 2\n'); % fixme: extension ID 2 is hardcoded here for labels
+    fprintf(fid, ['extension LABELSET ',obj.labelLibrary.type(1),'\n']);
     keys = obj.labelLibrary.keys;
     for k = keys
         in=find(~isnan(obj.labelLibrary.data(k).array));
@@ -168,7 +185,8 @@ end
 if ~isempty(obj.inclabelLibrary.keys)
     fprintf(fid, '# Extension specification for incrementing labels:\n');
     fprintf(fid, '# id inc labelstring \n');
-    fprintf(fid, 'extension LABELINC 3\n'); % fixme: extension ID 3 is hardcoded here for incrementing labels
+%     fprintf(fid, 'extension LABELINC 3\n'); % fixme: extension ID 3 is hardcoded here for incrementing labels
+    fprintf(fid, ['extension LABELINC ',obj.inclabelLibrary.type(1),'\n']);
     keys = obj.inclabelLibrary.keys;
     for k = keys
          in=find(~isnan(obj.inclabelLibrary.data(k).array));

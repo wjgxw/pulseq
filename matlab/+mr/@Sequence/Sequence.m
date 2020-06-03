@@ -399,12 +399,18 @@ classdef Sequence < handle
                         data = [event_type event_channel event.delay event.duration];
                         [id,found] = obj.trigLibrary.find(data);
                         if ~found
-                            obj.trigLibrary.insert(id,data);
+                            %obj.trigLibrary.insert(id,data);
+                            if event.tag>9
+                                error('2 digit identifier (tag) is not support for Extension specification: %s\n','trigLibrary');
+                            else
+                                obj.trigLibrary.insert(id,data,int2str(event.tag));
+                            end
                         end
                         %obj.blockEvents{index}(7)=id; % now we just
                         % collect the list of extension objects and we will
                         % add it to the event table later
-                        ext=struct('type', 1, 'ref', id);
+                        % ext=struct('type', 1, 'ref', id);
+                        ext=struct('type', event.tag, 'ref', id);
                         extensions=[extensions ext];
                         duration=max(duration,event.delay+event.duration);
                     case 'label'
@@ -413,13 +419,19 @@ classdef Sequence < handle
                             data=[event.slc event.seg event.rep event.nav event.avg event.eco event.set event.phs event.sms event.lin event.par];
                             [id,found] = obj.labelLibrary.find(data);
                             if ~found
-                                obj.labelLibrary.insert(id,data);
+                                %obj.labelLibrary.insert(id,data);
+                                if event.tag>9
+                                    error('2 digit identifier (tag) is not support for Extension specification: %s\n','labelLibrary');
+                                else
+                                    obj.labelLibrary.insert(id,data,int2str(event.tag));
+                                end
                             end
                         end
                         %obj.blockEvents{index}(7)=id; % now we just
                         % collect the list of extension objects and we will
                         % add it to the event table later
-                        ext=struct('type', 2, 'ref', id);
+                        %ext=struct('type', 2, 'ref', id);
+                        ext=struct('type', event.tag, 'ref', id);
                         extensions=[extensions ext];
                     case 'inclabel'
                         event_type=find(strcmp(event.type,{'inclabel'}));
@@ -427,13 +439,19 @@ classdef Sequence < handle
                             data=[event.slc event.seg event.rep event.nav event.avg event.eco event.set event.phs event.sms event.lin event.par];
                             [id,found] = obj.inclabelLibrary.find(data);
                             if ~found
-                                obj.inclabelLibrary.insert(id,data);
+                                %obj.inclabelLibrary.insert(id,data);
+                                if event.tag>9
+                                    error('2 digit identifier (tag) is not support for Extension specification: %s\n','inclabelLibrary');
+                                else
+                                    obj.inclabelLibrary.insert(id,data,int2str(event.tag));
+                                end
                             end
                         end
                         %obj.blockEvents{index}(7)=id; % now we just
                         % collect the list of extension objects and we will
                         % add it to the event table later
-                        ext=struct('type', 3, 'ref', id);
+                        %ext=struct('type', 3, 'ref', id);
+                        ext=struct('type', event.tag, 'ref', id);
                         extensions=[extensions ext];
                 end
             end
@@ -555,89 +573,51 @@ classdef Sequence < handle
                 % we have extensions -- triggers for now, may be more to
                 % come in the future, e.g. rotation matrices
                 % we will eventually isolate this into a separate function
+                % XG: let's make extension more robust 
                 nextExtID=eventInd(7);
-                while nextExtID~=0 
+                while nextExtID~=0
                     extData = obj.extensionLibrary.data(nextExtID).array;
                     % format: extType, extID, nextExtID
-                    if (extData(1)==1) % trigger
-                        trigger_types={'output','trigger'};
-                        data = obj.trigLibrary.data(extData(2)).array;
-                        trig.type = trigger_types{data(1)};
-                        if (data(1)==1)
-                            trigger_channels={'osc0','osc1','ext1'};
-                            trig.channel=trigger_channels{data(2)};
-                        elseif (data(1)==2)
-                            trigger_channels={'physio1','physio2'}; 
-                            trig.channel=trigger_channels{data(2)};;
-                        else
-                            error('unsupported trigger event type');
+                    if extData(1)>9
+                        error('2 digit identifier (tag) is not support for Extension specification: %s\n','labelLibrary');
+                    else                        
+                        switch int2str(extData(1))
+                            case obj.trigLibrary.type % trigger
+                                trigger_types={'output','trigger'};
+                                data = obj.trigLibrary.data(extData(2)).array;
+                                trig.type = trigger_types{data(1)};
+                                if (data(1)==1)
+                                    trigger_channels={'osc0','osc1','ext1'};
+                                    trig.channel=trigger_channels{data(2)};
+                                elseif (data(1)==2)
+                                    trigger_channels={'physio1','physio2'};
+                                    trig.channel=trigger_channels{data(2)};
+                                else
+                                    error('unsupported trigger event type');
+                                end
+                                trig.delay = data(3);
+                                trig.duration = data(4);
+                                %block.trig = trig;
+                                % generate extension-specific name
+                                filedName=sprintf('trig%d', extData(2));
+                                block.(filedName)=trig;
+                            case  obj.labelLibrary.type(1) % label
+                                data = obj.labelLibrary.data(extData(2)).array;
+                                label.type='label';
+                                in=find(~isnan(data));
+                                Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
+                                label.(lower(Mystr{in}))=data(in);
+                                block.('label')=label;
+                            case   obj.inclabelLibrary.type(1) % inclabel
+                                data = obj.inclabelLibrary.data(extData(2)).array;
+                                inclabel.type='inclabel';
+                                in=find(~isnan(data));
+                                Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
+                                inclabel.(lower(Mystr{in}))=data(in);
+                                block.('inclabel')=inclabel;
+                            otherwise
+                                error('unknown extension ID %d', extData(1));
                         end
-                        trig.delay = data(3);
-                        trig.duration = data(4);
-                        %block.trig = trig;
-                        % generate extension-specific name
-                        filedName=sprintf('trig%d', extData(2));
-                        block.(filedName)=trig;
-                    elseif (extData(1)==2) % label
-                        data = obj.labelLibrary.data(extData(2)).array;
-                        label.type='label';
-                        switch data(2)
-                            case 'SLC'
-                                label.slc=data(1);
-                            case 'SEG'
-                                label.seg=data(1);
-                            case 'REP'
-                                label.rep=data(1);
-                            case 'NAV'
-                                label.nav=data(1);
-                            case 'AVG'
-                                label.avg=data(1);
-                            case 'SET'
-                                label.set=data(1);
-                            case 'ECO'
-                                label.eco=data(1);
-                            case 'PHS'
-                                label.phs=data(1);
-                            case 'SMS'
-                                label.sms=data(1);
-                            case 'LIN'
-                                label.lin=data(1);
-                            case 'PAR'
-                                label.par=data(1);
-                        end
-                        filedName=sprintf('label%d',extData(2));
-                        block.(filedName)=label;
-                    elseif (extData(1)==3) % inclabel
-                        data = obj.inclabelLibrary.data(extData(2)).array;
-                        inclabel.type='inclabel';
-                        switch data(2) 
-                            case 'SLC'
-                                inclabel.slc=data(1);
-                            case 'SEG'
-                                inclabel.seg=data(1);
-                            case 'REP'
-                                inclabel.rep=data(1);
-                            case 'NAV'
-                                inclabel.nav=data(1);
-                            case 'AVG'
-                                inclabel.avg=data(1);
-                            case 'SET'
-                                inclabel.set=data(1);
-                            case 'ECO'
-                                inclabel.eco=data(1);
-                            case 'PHS'
-                                inclabel.phs=data(1);
-                            case 'SMS'
-                                inclabel.sms=data(1);
-                            case 'LIN'
-                                inclabel.lin=data(1);
-                            case 'PAR'
-                                inclabel.par=data(1);    
-                        end
-                        filedName=sprintf('inclabel%d',extData(2));
-                        block.(filedName)=inclabel;    
-                    else
-                        error('unknown extension ID %d', extData(1));
                     end
                     % now update nextExtID
                     nextExtID=extData(3);
