@@ -121,7 +121,7 @@ while true
 end
 fclose(fid);
 
-if ~strcmp(unique(tag_used),tag_used)
+if ~strcmp(unique(tag_used,'stable'),tag_used)
     error('duplicate identifier (tag) exists in different Extension specifications\n');
 end
 gradChannels={'gx','gy','gz'};
