@@ -582,7 +582,7 @@ classdef Sequence < handle
                         error('2 digit identifier (tag) is not support for Extension specification: %s\n','labelLibrary');
                     else                        
                         switch int2str(extData(1))
-                            case obj.trigLibrary.type % trigger
+                            case obj.trigLibrary.type(~isempty(obj.trigLibrary.type)) % trigger
                                 trigger_types={'output','trigger'};
                                 data = obj.trigLibrary.data(extData(2)).array;
                                 trig.type = trigger_types{data(1)};
@@ -601,14 +601,14 @@ classdef Sequence < handle
                                 % generate extension-specific name
                                 filedName=sprintf('trig%d', extData(2));
                                 block.(filedName)=trig;
-                            case  obj.labelLibrary.type(1) % label
+                            case  obj.labelLibrary.type(~isempty(obj.labelLibrary.type)) % label
                                 data = obj.labelLibrary.data(extData(2)).array;
                                 label.type='label';
                                 in=find(~isnan(data));
                                 Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
                                 label.(lower(Mystr{in}))=data(in);
                                 block.('label')=label;
-                            case   obj.inclabelLibrary.type(1) % inclabel
+                            case   obj.inclabelLibrary.type(~isempty(obj.inclabelLibrary.type)) % inclabel
                                 data = obj.inclabelLibrary.data(extData(2)).array;
                                 inclabel.type='inclabel';
                                 in=find(~isnan(data));
