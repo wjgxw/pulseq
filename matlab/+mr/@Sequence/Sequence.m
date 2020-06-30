@@ -924,6 +924,7 @@ classdef Sequence < handle
             %
             validPlotTypes = {'Gradient','Kspace'};
             validTimeUnits = {'s','ms','us'};
+            validLabel = {'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
             persistent parser
             if isempty(parser)
                 parser = inputParser;
@@ -933,6 +934,7 @@ classdef Sequence < handle
                 parser.addParamValue('timeRange',[0 inf],@(x)(isnumeric(x) && length(x)==2));
                 parser.addParamValue('timeDisp',validTimeUnits{1},...
                     @(x) any(validatestring(x,validTimeUnits)));
+                parser.addOptional('label',[],@(x) any(validatestring(x,validLabel)));
             end
             parse(parser,varargin{:});
             opt = parser.Results;
@@ -957,16 +959,41 @@ classdef Sequence < handle
             xlabel(ax(6),['t (' opt.timeDisp ')']);
             
             t0=0;
+            label_defined=false;
+            for i=1:length(validLabel)
+                label_store.(validLabel{i})=0;
+            end 
             %for iB=1:size(obj.blockEvents,1)
             for iB=1:length(obj.blockEvents)
                 block = obj.getBlock(iB);
                 isValid = t0>=opt.timeRange(1) && t0<=opt.timeRange(2);
                 if isValid
+                    if isfield(block,'label')||isfield(block,'inclabel') %current labels, works on the next adc
+                        if isfield(block,'inclabel')
+                            fn=fieldnames(block.inclabel);
+                            for i=2:length(fn)
+                                label_store.(validLabel{strcmpi(fn(i),validLabel)})=...
+                                    label_store.(validLabel{strcmpi(fn(i),validLabel)})+block.inclabel.(fn{i});
+                            end
+                        end
+                        if isfield(block,'label')
+                            fn=fieldnames(block.label);
+                            for i=2:length(fn)
+                                label_store.(validLabel{strcmpi(fn(i),validLabel)})=block.label.(fn{i});
+                            end
+                        end
+                        label_defined=true;
+                    end                  
                     if ~isempty(block.adc)
                         adc=block.adc;
                         t=adc.delay + (0:adc.numSamples-1)*adc.dwell;
                         plot(tFactor*(t0+t),zeros(size(t)),'rx','Parent',ax(1));
-                    end
+                        if label_defined && ~isempty(opt.label)
+                            t=t0+adc.delay + (adc.numSamples-1)/2*adc.dwell;
+                            p=plot(tFactor*t,label_store.(upper(opt.label)),'b.','markersize',10,'Parent',ax(1));
+                            legend(ax(1),p,opt.label,'location','Northwest','AutoUpdate','off');
+                        end
+                    end                   
                     if ~isempty(block.rf)
                         rf=block.rf;
                         [tc,ic]=mr.calcRfCenter(rf);

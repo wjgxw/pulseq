@@ -24,7 +24,7 @@ lims = mr.opts('MaxGrad',32,'GradUnit','mT/m',...
     'SliceThickness',thickness,'apodization',0.5,'timeBwProduct',4);
 
 % define the trigger to play out
-trig=mr.makeTrigger('physio1','duration', 2000e-6,'tag',3); % duration after
+trig=mr.makeTrigger('physio1','duration', 2000e-6,'tag',1); % duration after
 
 % Define other gradients and ADC events
 deltak=1/fov;
@@ -34,20 +34,20 @@ readoutTime = Nx*dwellTime;
 flatTime=ceil(readoutTime*1e5)*1e-5; % round-up to the gradient raster
 gx = mr.makeTrapezoid('x',lims,'Amplitude',kWidth/readoutTime,'FlatTime',flatTime);
 adc = mr.makeAdc(Nx,'Duration',readoutTime,'Delay',gx.riseTime+flatTime/2-(readoutTime-dwellTime)/2);
-nrlabel = mr.makeLabel('SET','REP', 0,'tag',1);
-nsllabel = mr.makeLabel('SET','SLC', 0,'tag',1);
-setseglabel = mr.makeLabel('SET','SEG', 1,'tag',1);
-nseglabel = mr.makeLabel('SET','SEG', 0,'tag',1);
-setavglabel = mr.makeLabel('SET','AVG',1,'tag',1);
-navglabel = mr.makeLabel('SET','AVG',0,'tag',1);
-nllabel = mr.makeLabel('SET','LIN', 0,'tag',1);
-centllabel = mr.makeLabel('SET','LIN', round(Ny/2),'tag',1);
+nrlabel = mr.makeLabel('SET','REP', 0,'tag',2);
+nsllabel = mr.makeLabel('SET','SLC', 0,'tag',2);
+setseglabel = mr.makeLabel('SET','SEG', 1,'tag',2);
+nseglabel = mr.makeLabel('SET','SEG', 0,'tag',2);
+setavglabel = mr.makeLabel('SET','AVG',1,'tag',2);
+navglabel = mr.makeLabel('SET','AVG',0,'tag',2);
+nllabel = mr.makeLabel('SET','LIN', 0,'tag',2);
+centllabel = mr.makeLabel('SET','LIN', round(Ny/2),'tag',2);
 
-crlabel = mr.makeLabel('INC','REP', 1,'tag',5);
-csllabel = mr.makeLabel('INC','SLC', 1,'tag',5);
-cllabel = mr.makeLabel('INC','LIN', 1,'tag',5);
-setnavlabel = mr.makeLabel('SET','NAV', 1,'tag',1);
-unsetnavlabel = mr.makeLabel('SET','NAV', 0,'tag',1);
+crlabel = mr.makeLabel('INC','REP', 1,'tag',3);
+csllabel = mr.makeLabel('INC','SLC', 1,'tag',3);
+cllabel = mr.makeLabel('INC','LIN', 1,'tag',3);
+setnavlabel = mr.makeLabel('SET','NAV', 1,'tag',2);
+unsetnavlabel = mr.makeLabel('SET','NAV', 0,'tag',2);
 
 % Pre-phasing gradients
 preTime=8e-4;
@@ -71,14 +71,14 @@ for r=1:Nreps
             if (n == 1)
                seq.addBlock(gx,adc,setnavlabel,setseglabel,centllabel);
             elseif (n == 3)
-               seq.addBlock(gx,adc,unsetnavlabel,setseglabel,centllabel,setavglabel);
+               seq.addBlock(gx,adc,setseglabel,centllabel,setavglabel);
             else
                seq.addBlock(gx,adc,nseglabel,centllabel);
             end
             gx.amplitude = -gx.amplitude; 
         end
         %seq.addBlock(gxPre,gyPre,gzReph);
-        seq.addBlock(gyPre,nllabel,navglabel);%lin/avg reset
+        seq.addBlock(gyPre,nllabel,unsetnavlabel,navglabel);%lin/avg reset
         gx.amplitude = -gx.amplitude;  
         for i=1:Ny
             gx.amplitude = -gx.amplitude;   % Reverse polarity of read gradient
@@ -98,7 +98,7 @@ end
 seq.write('epi_label.seq');   % Output sequence for scanner
 toc
 %seq.plot();             % Plot sequence waveforms
-seq.plot('TimeRange',[0 0.03], 'TimeDisp', 'ms');
+seq.plot('TimeRange',[0 0.03], 'TimeDisp', 'ms', 'label', 'lin');
 % new single-function call for trajectory calculation
 [ktraj_adc, ktraj, t_excitation, t_refocusing, t_adc] = seq.calculateKspace();
 

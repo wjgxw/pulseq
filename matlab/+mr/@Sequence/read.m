@@ -103,12 +103,6 @@ while true
             obj.shapeLibrary = readShapes(fid);
         case '[EXTENSIONS]'
             obj.extensionLibrary = readEvents(fid, [1 1 1]);
-%         case 'extension TRIGGERS 1' % this is not the best style -- we will only be able to load our own generated files...
-%             obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6]);
-%         case 'extension LABELSET 2' % this is not the best style -- we will only be able to load our own generated files...
-%             obj.labelLibrary = readEvents(fid, [1 1 1 1 1 1 1 1 1 1 1]); 
-%         case 'extension LABELINC 3' % this is not the best style -- we will only be able to load our own generated files...
-%             obj.inclabelLibrary = readEvents(fid,[1 1 1 1 1 1 1 1 1 1 1]);    
         case 'TRIGGERS'
             obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6],extension{1}{2});
         case 'LABELSET'
@@ -233,7 +227,7 @@ return
             str = char(sscanf(line, '%*d %*d %s'))';
             data = sscanf(line,'%f')';
             id = data(1);
-            test = find(strcmp(["SLC","SEG","REP","NAV","AVG","ECO","SET","PHS","SMS","LIN","PAR"],str));
+            test = find(strcmp({'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'},str));
             if(~isempty(test))
                 extdata = [id NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN];
                 extdata(1+test)= data(2);
