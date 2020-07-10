@@ -24,7 +24,7 @@ lims = mr.opts('MaxGrad',32,'GradUnit','mT/m',...
     'SliceThickness',thickness,'apodization',0.5,'timeBwProduct',4);
 
 % define the trigger to play out
-trig=mr.makeTrigger('physio1','duration', 2000e-6,'tag',1); % duration after
+trig=mr.makeTrigger('physio1','duration', 2000e-6); % duration after
 
 % Define other gradients and ADC events
 deltak=1/fov;
@@ -34,20 +34,20 @@ readoutTime = Nx*dwellTime;
 flatTime=ceil(readoutTime*1e5)*1e-5; % round-up to the gradient raster
 gx = mr.makeTrapezoid('x',lims,'Amplitude',kWidth/readoutTime,'FlatTime',flatTime);
 adc = mr.makeAdc(Nx,'Duration',readoutTime,'Delay',gx.riseTime+flatTime/2-(readoutTime-dwellTime)/2);
-nrlabel = mr.makeLabel('SET','REP', 0,'tag',2);
-nsllabel = mr.makeLabel('SET','SLC', 0,'tag',2);
-setseglabel = mr.makeLabel('SET','SEG', 1,'tag',2);
-nseglabel = mr.makeLabel('SET','SEG', 0,'tag',2);
-setavglabel = mr.makeLabel('SET','AVG',1,'tag',2);
-navglabel = mr.makeLabel('SET','AVG',0,'tag',2);
-nllabel = mr.makeLabel('SET','LIN', 0,'tag',2);
-centllabel = mr.makeLabel('SET','LIN', round(Ny/2),'tag',2);
+nrlabel = mr.makeLabel('SET','REP', 0);
+nsllabel = mr.makeLabel('SET','SLC', 0);
+setseglabel = mr.makeLabel('SET','SEG', 1);
+nseglabel = mr.makeLabel('SET','SEG', 0);
+setavglabel = mr.makeLabel('SET','AVG',1);
+navglabel = mr.makeLabel('SET','AVG',0);
+nllabel = mr.makeLabel('SET','LIN', 0);
+centllabel = mr.makeLabel('SET','LIN', round(Ny/2));
 
-crlabel = mr.makeLabel('INC','REP', 1,'tag',3);
-csllabel = mr.makeLabel('INC','SLC', 1,'tag',3);
-cllabel = mr.makeLabel('INC','LIN', 1,'tag',3);
-setnavlabel = mr.makeLabel('SET','NAV', 1,'tag',2);
-unsetnavlabel = mr.makeLabel('SET','NAV', 0,'tag',2);
+crlabel = mr.makeLabel('INC','REP', 1);
+csllabel = mr.makeLabel('INC','SLC', 1);
+cllabel = mr.makeLabel('INC','LIN', 1);
+setnavlabel = mr.makeLabel('SET','NAV',1);
+unsetnavlabel = mr.makeLabel('SET','NAV', 0);
 
 % Pre-phasing gradients
 preTime=8e-4;

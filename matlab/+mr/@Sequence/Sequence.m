@@ -47,10 +47,12 @@ classdef Sequence < handle
         adcLibrary;       % Library of ADC readouts
         delayLibrary;     % Library of delay events
         trigLibrary;      % Library of trigger events ( referenced from the extentions library )
-        labelLibrary;     % Library of Label events ( reference from the extensions library )
-        inclabelLibrary;  % Library of IncLabel events ( reference from the extensions library )        
+        labelsetLibrary;  % Library of Label(set) events ( reference from the extensions library )
+        labelincLibrary;  % Library of Label(inc) events ( reference from the extensions library )
         extensionLibrary; % Library of extension events. Extension events form single-linked zero-terminated lists
         shapeLibrary;     % Library of compressed shapes
+        extensionStringIDs;  % string IDs of the used extensions (cell array)
+        extensionNumericIDs; % numeric IDs of the used extensions (numeric array)
         sys;
     end
     
@@ -67,10 +69,12 @@ classdef Sequence < handle
             obj.adcLibrary = mr.EventLibrary();
             obj.delayLibrary = mr.EventLibrary();
             obj.trigLibrary = mr.EventLibrary();
-            obj.labelLibrary = mr.EventLibrary();
-            obj.inclabelLibrary = mr.EventLibrary();
+            obj.labelsetLibrary = mr.EventLibrary();
+            obj.labelincLibrary = mr.EventLibrary();
             obj.extensionLibrary = mr.EventLibrary();
             obj.blockEvents = {};
+            obj.extensionStringIDs={};
+            obj.extensionNumericIDs=[];
             
             if nargin<1
                 sys=mr.opts();
@@ -399,72 +403,53 @@ classdef Sequence < handle
                         data = [event_type event_channel event.delay event.duration];
                         [id,found] = obj.trigLibrary.find(data);
                         if ~found
-                            %obj.trigLibrary.insert(id,data);
-                            if event.tag>9
-                                error('2 digit identifier (tag) is not support for Extension specification: %s\n','trigLibrary');
-                            else
-                                obj.trigLibrary.insert(id,data,int2str(event.tag));
-                            end
+                            obj.trigLibrary.insert(id,data);
                         end
                         %obj.blockEvents{index}(7)=id; % now we just
                         % collect the list of extension objects and we will
                         % add it to the event table later
                         % ext=struct('type', 1, 'ref', id);
-                        ext=struct('type', event.tag, 'ref', id);
+                        ext=struct('type', obj.getExtensionTypeID('TRIGGERS'), 'ref', id);
                         extensions=[extensions ext];
                         duration=max(duration,event.delay+event.duration);
-                    case 'label'
-                        event_type=find(strcmp(event.type,{'label'}));
-                        if (event_type==1)
-                            data=[event.slc event.seg event.rep event.nav event.avg event.eco event.set event.phs event.sms event.lin event.par];
-                            [id,found] = obj.labelLibrary.find(data);
-                            if ~found
-                                %obj.labelLibrary.insert(id,data);
-                                if event.tag>9
-                                    error('2 digit identifier (tag) is not support for Extension specification: %s\n','labelLibrary');
-                                else
-                                    obj.labelLibrary.insert(id,data,int2str(event.tag));
-                                end
-                            end
+                    case 'labelset'
+                        label_id=find(strcmp(event.label,mr.getSupportedLabels()));
+                        data=[event.value label_id];
+                        [id,found] = obj.labelsetLibrary.find(data);
+                        if ~found
+                            obj.labelsetLibrary.insert(id,data);
                         end
-                        %obj.blockEvents{index}(7)=id; % now we just
+                        
                         % collect the list of extension objects and we will
                         % add it to the event table later
                         %ext=struct('type', 2, 'ref', id);
-                        ext=struct('type', event.tag, 'ref', id);
+                        ext=struct('type', obj.getExtensionTypeID('LABELSET'), 'ref', id);
                         extensions=[extensions ext];
-                    case 'inclabel'
-                        event_type=find(strcmp(event.type,{'inclabel'}));
-                        if (event_type==1)
-                            data=[event.slc event.seg event.rep event.nav event.avg event.eco event.set event.phs event.sms event.lin event.par];
-                            [id,found] = obj.inclabelLibrary.find(data);
-                            if ~found
-                                %obj.inclabelLibrary.insert(id,data);
-                                if event.tag>9
-                                    error('2 digit identifier (tag) is not support for Extension specification: %s\n','inclabelLibrary');
-                                else
-                                    obj.inclabelLibrary.insert(id,data,int2str(event.tag));
-                                end
-                            end
+                    case 'labelinc'
+                        label_id=find(strcmp(event.label,mr.getSupportedLabels()));
+                        data=[event.value label_id];
+                        [id,found] = obj.labelincLibrary.find(data);
+                        if ~found
+                            obj.labelincLibrary.insert(id,data);
                         end
-                        %obj.blockEvents{index}(7)=id; % now we just
+                        
                         % collect the list of extension objects and we will
                         % add it to the event table later
-                        %ext=struct('type', 3, 'ref', id);
-                        ext=struct('type', event.tag, 'ref', id);
+                        %ext=struct('type', 2, 'ref', id);
+                        ext=struct('type', obj.getExtensionTypeID('LABELINC'), 'ref', id);
                         extensions=[extensions ext];
                 end
             end
             
             if ~isempty(extensions)
                 % add extensions now... but it's tricky actually
-                % we need to heck whether the exactly the same list if
+                % we need to check whether the exactly the same list if
                 % extensions already exists, otherwise we have to create a
                 % new one... ooops, we have a potential problem with the 
                 % key mapping then... The trick is that we rely on the
                 % sorting of the extension IDs and then we can always find
                 % the last one in the list by setting the reference to the
-                % next to 0 and then proceed with the otehr elements.
+                % next to 0 and then proceed with the other elements.
                 [~,I]=sort([extensions(:).ref]);
                 extensions=extensions(I);
                 all_found=true;
@@ -570,54 +555,53 @@ classdef Sequence < handle
                 block.delay = delay;
             end
             if eventInd(7) > 0
-                % we have extensions -- triggers for now, may be more to
-                % come in the future, e.g. rotation matrices
+                % we have extensions -- triggers, labels, etc
                 % we will eventually isolate this into a separate function
-                % XG: let's make extension more robust 
                 nextExtID=eventInd(7);
                 while nextExtID~=0
                     extData = obj.extensionLibrary.data(nextExtID).array;
                     % format: extType, extID, nextExtID
-                    if extData(1)>9
-                        error('2 digit identifier (tag) is not support for Extension specification: %s\n','labelLibrary');
-                    else                        
-                        switch int2str(extData(1))
-                            case obj.trigLibrary.type(~isempty(obj.trigLibrary.type)) % trigger
-                                trigger_types={'output','trigger'};
-                                data = obj.trigLibrary.data(extData(2)).array;
-                                trig.type = trigger_types{data(1)};
-                                if (data(1)==1)
-                                    trigger_channels={'osc0','osc1','ext1'};
-                                    trig.channel=trigger_channels{data(2)};
-                                elseif (data(1)==2)
-                                    trigger_channels={'physio1','physio2'};
-                                    trig.channel=trigger_channels{data(2)};
-                                else
-                                    error('unsupported trigger event type');
-                                end
-                                trig.delay = data(3);
-                                trig.duration = data(4);
-                                %block.trig = trig;
-                                % generate extension-specific name
-                                filedName=sprintf('trig%d', extData(2));
-                                block.(filedName)=trig;
-                            case  obj.labelLibrary.type(~isempty(obj.labelLibrary.type)) % label
-                                data = obj.labelLibrary.data(extData(2)).array;
-                                label.type='label';
-                                in=find(~isnan(data));
-                                Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
-                                label.(lower(Mystr{in}))=data(in);
-                                block.('label')=label;
-                            case   obj.inclabelLibrary.type(~isempty(obj.inclabelLibrary.type)) % inclabel
-                                data = obj.inclabelLibrary.data(extData(2)).array;
-                                inclabel.type='inclabel';
-                                in=find(~isnan(data));
-                                Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
-                                inclabel.(lower(Mystr{in}))=data(in);
-                                block.('inclabel')=inclabel;
-                            otherwise
-                                error('unknown extension ID %d', extData(1));
-                        end
+                    extTypeStr=obj.getExtensionTypeString(extData(1));
+                    switch extTypeStr
+                        case 'TRIGGERS'
+                            trigger_types={'output','trigger'};
+                            data = obj.trigLibrary.data(extData(2)).array;
+                            trig.type = trigger_types{data(1)};
+                            if (data(1)==1)
+                                trigger_channels={'osc0','osc1','ext1'};
+                                trig.channel=trigger_channels{data(2)};
+                            elseif (data(1)==2)
+                                trigger_channels={'physio1','physio2'}; 
+                                trig.channel=trigger_channels{data(2)};;
+                            else
+                                error('unsupported trigger event type');
+                            end
+                            trig.delay = data(3);
+                            trig.duration = data(4);
+                            % allow for multiple triggers per block
+                            if(isfield(block, 'trig'))
+                                block.trig(length(block.trig)+1) = trig;
+                            else
+                                block.trig=trig;
+                            end
+                        case {'LABELSET','LABELINC'} 
+                            label.type=lower(extTypeStr);
+                            supported_labels=mr.getSupportedLabels();
+                            if strcmp(extTypeStr,'LABELSET')
+                                data = obj.labelsetLibrary.data(extData(2)).array;
+                            else
+                                data = obj.labelincLibrary.data(extData(2)).array;
+                            end
+                            label.label=supported_labels{data(2)};
+                            label.value=data(1);
+                            % allow for multiple labels per block
+                            if(isfield(block, 'label'))
+                                block.label(length(block.label)+1) = label;
+                            else
+                                block.label=label;
+                            end
+                        otherwise
+                            error('unknown extension ID %d', extData(1));
                     end
                     % now update nextExtID
                     nextExtID=extData(3);
@@ -924,7 +908,7 @@ classdef Sequence < handle
             %
             validPlotTypes = {'Gradient','Kspace'};
             validTimeUnits = {'s','ms','us'};
-            validLabel = {'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
+            validLabel = mr.getSupportedLabels();
             persistent parser
             if isempty(parser)
                 parser = inputParser;
@@ -968,18 +952,13 @@ classdef Sequence < handle
                 block = obj.getBlock(iB);
                 isValid = t0>=opt.timeRange(1) && t0<=opt.timeRange(2);
                 if isValid
-                    if isfield(block,'label')||isfield(block,'inclabel') %current labels, works on the next adc
-                        if isfield(block,'inclabel')
-                            fn=fieldnames(block.inclabel);
-                            for i=2:length(fn)
-                                label_store.(validLabel{strcmpi(fn(i),validLabel)})=...
-                                    label_store.(validLabel{strcmpi(fn(i),validLabel)})+block.inclabel.(fn{i});
-                            end
-                        end
-                        if isfield(block,'label')
-                            fn=fieldnames(block.label);
-                            for i=2:length(fn)
-                                label_store.(validLabel{strcmpi(fn(i),validLabel)})=block.label.(fn{i});
+                    if isfield(block,'label') %current labels, works on the curent or next adc
+                        for i=1:length(block.label)
+                            if strcmp(block.label(i).type,'labelinc')
+                                label_store.(block.label(i).label)=...
+                                    label_store.(block.label(i).label)+block.label(i).value;
+                            else
+                                label_store.(block.label(i).label)=block.label(i).value;
                             end
                         end
                         label_defined=true;
@@ -1157,6 +1136,45 @@ classdef Sequence < handle
             codes.section.adc         = bitor(prefix, int64(6));
             codes.section.delays      = bitor(prefix, int64(7));
             codes.section.shapes      = bitor(prefix, int64(8));
+        end
+        
+        function id = getExtensionTypeID(obj, str) 
+            % get numeric ID for the given string extention ID
+            % will automatically create a new ID if unknown 
+            num=find(strcmp(obj.extensionStringIDs,str));
+            if isempty(num)
+                if isempty(obj.extensionNumericIDs)
+                    id=1;
+                else
+                    id=1+max(obj.extensionNumericIDs);
+                end
+                obj.extensionNumericIDs(1+length(obj.extensionNumericIDs))=id;
+                obj.extensionStringIDs{1+length(obj.extensionStringIDs)}=str;
+                assert(length(obj.extensionNumericIDs)==length(obj.extensionStringIDs));
+            else
+                id=obj.extensionNumericIDs(num);
+            end
+        end
+        
+        function str = getExtensionTypeString(obj, id)
+            % get numeric ID for the given string extention ID
+            % may fail 
+            num=find(obj.extensionNumericIDs==id);
+            if isempty(num)
+                error(['Extension for the given ID ' num2str(id) ' is unknown']);
+            end
+            str=obj.extensionStringIDs{num};
+        end
+        
+        function setExtensionStringAndID(obj, str, id) 
+            % set numeric ID for the given string extention ID
+            % may fail if not unique
+            if any(strcmp(obj.extensionStringIDs,str)) || any(obj.extensionNumericIDs==id) 
+                error('Numeric or String ID is not unique');
+            end
+            obj.extensionNumericIDs(1+length(obj.extensionNumericIDs))=id;
+            obj.extensionStringIDs{1+length(obj.extensionStringIDs)}=str;
+            assert(length(obj.extensionNumericIDs)==length(obj.extensionStringIDs))
         end
     end
 end % classdef

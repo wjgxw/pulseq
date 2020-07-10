@@ -16,7 +16,6 @@ if isempty(parser)
     addOptional(parser, 'delay', 0, @isnumeric);
     addOptional(parser, 'duration', 0, @isnumeric); % will replace with gradRadterTime below
     addOptional(parser, 'system', mr.opts(), @isstruct);
-    addParameter(parser, 'tag', 1, @isnumeric); %XG: let's make it more robust
 end
 
 if nargin<1
@@ -36,6 +35,5 @@ trig.duration = opt.duration;
 if (trig.duration<=opt.system.gradRasterTime)
     trig.duration=opt.system.gradRasterTime;
 end
-trig.tag = opt.tag;
 
 end

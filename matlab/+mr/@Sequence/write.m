@@ -137,24 +137,21 @@ if ~isempty(obj.extensionLibrary.keys)
 end
 
 % check no error/duplicate extension ID used.
-assert(isempty(obj.trigLibrary.type) || all(unique(obj.trigLibrary.type)==obj.trigLibrary.type(1)),...
-    'different identifier (tag) used for the same Extension specification: trigLibrary');
-assert(isempty(obj.labelLibrary.type) || all(unique(obj.labelLibrary.type)==obj.labelLibrary.type(1)),...
-    'different identifier (tag) used for the same Extension specification: labelLibrary');
-assert(isempty(obj.inclabelLibrary.type) || all(unique(obj.inclabelLibrary.type)==obj.inclabelLibrary.type(1)),...
-    'different identifier (tag) used for the same Extension specification: inclabelLibrary');
-
-assert(strcmp([unique(obj.trigLibrary.type),unique(obj.labelLibrary.type),unique(obj.inclabelLibrary.type)],...
-        unique([unique(obj.trigLibrary.type),unique(obj.labelLibrary.type),unique(obj.inclabelLibrary.type)],'stable')),...
-        sprintf(['duplicate identifier (tag) exists in different Extension specifications; \n',...
-        'by default: trigLibrary 1, labelLibrary 2, inclabelLibrary 3']));
+%assert(isempty(obj.trigLibrary.type) || all(unique(obj.trigLibrary.type)==obj.trigLibrary.type(1)),...
+%    'different identifier (tag) used for the same Extension specification: trigLibrary');
+%assert(isempty(obj.labelLibrary.type) || all(unique(obj.labelLibrary.type)==obj.labelLibrary.type(1)),...
+%    'different identifier (tag) used for the same Extension specification: labelLibrary');
+%assert(strcmp([unique(obj.trigLibrary.type),unique(obj.labelLibrary.type),unique(obj.inclabelLibrary.type)],...
+%        unique([unique(obj.trigLibrary.type),unique(obj.labelLibrary.type),unique(obj.inclabelLibrary.type)],'stable')),...
+%        sprintf(['duplicate identifier (tag) exists in different Extension specifications; \n',...
+%        'by default: trigLibrary 1, labelLibrary 2, inclabelLibrary 3']));
 % 
 
 if ~isempty(obj.trigLibrary.keys)
     fprintf(fid, '# Extension specification for digital output and input triggers:\n');
     fprintf(fid, '# id type channel delay (us) duration (us)\n');
 %     fprintf(fid, 'extension TRIGGERS 1\n'); % fixme: extension ID 1 is hardcoded here for triggers
-    fprintf(fid, ['extension TRIGGERS ',obj.trigLibrary.type(1),'\n']);
+    fprintf(fid, ['extension TRIGGERS ',num2str(obj.getExtensionTypeID('TRIGGERS')),'\n']);
 
     keys = obj.trigLibrary.keys;
     for k = keys
@@ -164,41 +161,50 @@ if ~isempty(obj.trigLibrary.keys)
     fprintf(fid, '\n');
 end
 
-if ~isempty(obj.labelLibrary.keys)
+if ~isempty(obj.labelsetLibrary.keys)
+    lbls=mr.getSupportedLabels();
+
     fprintf(fid, '# Extension specification for setting labels:\n');
     fprintf(fid, '# id set labelstring\n');
-%     fprintf(fid, 'extension LABELSET 2\n'); % fixme: extension ID 2 is hardcoded here for labels
-    fprintf(fid, ['extension LABELSET ',obj.labelLibrary.type(1),'\n']);
-    keys = obj.labelLibrary.keys;
+    tid=obj.getExtensionTypeID('LABELSET');
+    fprintf(fid, ['extension LABELSET ',num2str(tid),'\n']);
+    keys = obj.labelsetLibrary.keys;
     for k = keys
-        in=find(~isnan(obj.labelLibrary.data(k).array));
-        count = length(in);
-        Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
-        for i=1:length(in)
             fprintf(fid, '%d %d %s\n', ... 
-                k, obj.labelLibrary.data(k).array(in(i)), Mystr{in(i)});
-        end
+                k, obj.labelsetLibrary.data(k).array(1),lbls{obj.labelsetLibrary.data(k).array(2)});
+    end
+    fprintf(fid, '\n');
+
+    fprintf(fid, '# Extension specification for setting labels:\n');
+    fprintf(fid, '# id set labelstring\n');
+    tid=obj.getExtensionTypeID('LABELINC');
+    fprintf(fid, ['extension LABELINC ',num2str(tid),'\n']);
+    lbls=mr.getSupportedLabels();
+    keys = obj.labelincLibrary.keys;
+    for k = keys
+            fprintf(fid, '%d %d %s\n', ... 
+                k, obj.labelincLibrary.data(k).array(1),lbls{obj.labelincLibrary.data(k).array(2)});
     end
     fprintf(fid, '\n');
 end
 
-if ~isempty(obj.inclabelLibrary.keys)
-    fprintf(fid, '# Extension specification for incrementing labels:\n');
-    fprintf(fid, '# id inc labelstring \n');
-%     fprintf(fid, 'extension LABELINC 3\n'); % fixme: extension ID 3 is hardcoded here for incrementing labels
-    fprintf(fid, ['extension LABELINC ',obj.inclabelLibrary.type(1),'\n']);
-    keys = obj.inclabelLibrary.keys;
-    for k = keys
-         in=find(~isnan(obj.inclabelLibrary.data(k).array));
-         count = length(in);
-         Mystr={'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'};
-         for i=1:length(in)
-             fprintf(fid, '%d %d %s\n', ...
-                 k, obj.inclabelLibrary.data(k).array(in(i)), Mystr{in(i)} );
-         end
-    end
-    fprintf(fid, '\n');
-end
+%if ~isempty(obj.inclabelLibrary.keys)
+%    fprintf(fid, '# Extension specification for incrementing labels:\n');
+%    fprintf(fid, '# id inc labelstring \n');
+%%     fprintf(fid, 'extension LABELINC 3\n'); % fixme: extension ID 3 is hardcoded here for incrementing labels
+%    fprintf(fid, ['extension LABELINC ',obj.inclabelLibrary.type(1),'\n']);
+%    keys = obj.inclabelLibrary.keys;
+%    for k = keys
+%         in=find(~isnan(obj.inclabelLibrary.data(k).array));
+%         count = length(in);
+%         Mystr=mr.getSupportedLabels();
+%         for i=1:length(in)
+%             fprintf(fid, '%d %d %s\n', ...
+%                 k, obj.inclabelLibrary.data(k).array(in(i)), Mystr{in(i)} );
+%         end
+%    end
+%    fprintf(fid, '\n');
+%end
 
 if ~isempty(obj.shapeLibrary.keys)
     fprintf(fid, '# Sequence Shapes\n');

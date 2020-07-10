@@ -32,27 +32,19 @@ obj.rfLibrary = mr.EventLibrary();
 obj.adcLibrary = mr.EventLibrary();
 obj.delayLibrary = mr.EventLibrary();
 obj.trigLibrary = mr.EventLibrary();
-obj.labelLibrary = mr.EventLibrary();
-obj.inclabelLibrary = mr.EventLibrary();
-tag_used=char(zeros(1,0));
+obj.labelsetLibrary = mr.EventLibrary();
+obj.labelincLibrary = mr.EventLibrary();
+obj.extensionStringIDs={};
+obj.extensionNumericIDs=[];
+
+
 % Load data from file
 while true
     section = skipComments(fid);
     if section == -1
         break
     end
-
-    extension=regexp(section,'extension (\w+) (\d+)','tokens');
-    if ~isempty(extension)
-        section=extension{1}{1};        
-        if length(extension{1}{2})>1
-            error('2 digit identifier (tag) is not support for Extension specifications\n ');
-        else
-            tag_used=[tag_used,extension{1}{2}];
-        end
-    end
     
-        
     switch section
         case '[DEFINITIONS]'
             obj.definitions = readDefinitions(fid);
@@ -102,22 +94,27 @@ while true
         case '[SHAPES]'
             obj.shapeLibrary = readShapes(fid);
         case '[EXTENSIONS]'
-            obj.extensionLibrary = readEvents(fid, [1 1 1]);
-        case 'TRIGGERS'
-            obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6],extension{1}{2});
-        case 'LABELSET'
-            obj.labelLibrary = readEvents(fid, [1 1 1 1 1 1 1 1 1 1 1],extension{1}{2});
-        case 'LABELINC'
-            obj.inclabelLibrary = readEvents(fid,[1 1 1 1 1 1 1 1 1 1 1],extension{1}{2});
+            obj.extensionLibrary = readEvents(fid);
         otherwise
-            error('Unknown section code: %s', section);
-    end   
+            if     strncmp('extension TRIGGERS', section, 18) 
+                id=str2num(section(19:end));
+                obj.setExtensionStringAndID('TRIGGERS',id);
+                obj.trigLibrary = readEvents(fid, [1 1 1e-6 1e-6]);
+            elseif strncmp('extension LABELSET', section, 18) 
+                id=str2num(section(19:end));
+                obj.setExtensionStringAndID('LABELSET',id);
+                obj.labelsetLibrary = readAndParseEvents(fid,@str2num,@(s)find(strcmp(mr.getSupportedLabels,s)));
+            elseif strncmp('extension LABELINC', section, 18) 
+                id=str2num(section(19:end));
+                obj.setExtensionStringAndID('LABELINC',id);
+                obj.labelincLibrary = readAndParseEvents(fid,@str2num,@(s)find(strcmp(mr.getSupportedLabels,s)));
+            else
+                error('Unknown section code: %s', section);
+            end
+    end
 end
 fclose(fid);
 
-if ~strcmp(unique(tag_used,'stable'),tag_used)
-    error('duplicate identifier (tag) exists in different Extension specifications\n');
-end
 gradChannels={'gx','gy','gz'};
 
 if detectRFuse
@@ -222,33 +219,46 @@ return
             eventLibrary = mr.EventLibrary();
         end
         line = fgetl(fid);
-        flag = true;
         while ischar(line) && ~(isempty(line) || line(1) == '#')
-            str = char(sscanf(line, '%*d %*d %s'))';
             data = sscanf(line,'%f')';
             id = data(1);
-            test = find(strcmp({'SLC', 'SEG', 'REP', 'NAV', 'AVG', 'ECO', 'SET', 'PHS', 'SMS', 'LIN', 'PAR'},str));
-            if(~isempty(test))
-                extdata = [id NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN];
-                extdata(1+test)= data(2);
-                flag = false;
-                line=fgetl(fid);
-                str = char(sscanf(line, '%*d %*d %s'))';
-            end
-            if flag == true
-                data = scale.*data(2:end);
-            else
-                data = scale.*extdata(2:end);
-            end
+            data = scale.*data(2:end);
             if nargin < 3
                 eventLibrary.insert(id, data);
             else
                 eventLibrary.insert(id, data, type);
             end
+            
+            line=fgetl(fid);
+        end
+    end
 
-            if (flag == true)
-                line=fgetl(fid);
+    function eventLibrary = readAndParseEvents(fid, varargin)
+        %readAndParseEvents Read an event section of a sequence file.
+        %   library=readAndParseEvents(fid) Read event data from file 
+        %   identifier of an open MR sequence file and return a library of 
+        %   events.
+        %
+        %   library=readAndParseEvents(fid,parser1,parser2,...) Read event  
+        %   data and convert the elements using to the provided parser. 
+        %   Default parser is str2num()
+        %
+        eventLibrary = mr.EventLibrary();
+        line = fgetl(fid);
+        while ischar(line) && ~(isempty(line) || line(1) == '#')
+            datas=regexp(line, '(\s+)','split');
+            data=zeros(1,length(datas)-1);
+            id = str2num(datas{1});
+            for i=2:length(datas)
+                if i>nargin
+                    data(i-1) = str2num(datas{i});
+                else
+                    data(i-1) = varargin{i-1}(datas{i});
+                end
             end
+            eventLibrary.insert(id, data);
+
+            line=fgetl(fid);
         end
     end
 
