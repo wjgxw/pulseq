@@ -60,7 +60,8 @@ dur = ceil(2*sqrt(deltak/lims.maxSlew)/10e-6)*10e-6;
 gy = mr.makeTrapezoid('y',lims,'Area',deltak,'Duration',dur);
 
 % Define sequence blocks
-seq.addBlock(nrlabel,nsllabel,nseglabel,nllabel); %rep/slc/seg/line reset
+% all counters are initialized to 0, so we don't need this 
+% seq.addBlock(nrlabel,nsllabel,nseglabel,nllabel); %rep/slc/seg/line reset
 for r=1:Nreps
     seq.addBlock(trig,nsllabel,nseglabel,nllabel); %slc/seg/line reset
     for s=1:Nslices

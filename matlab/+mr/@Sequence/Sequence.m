@@ -72,9 +72,9 @@ classdef Sequence < handle
             obj.labelsetLibrary = mr.EventLibrary();
             obj.labelincLibrary = mr.EventLibrary();
             obj.extensionLibrary = mr.EventLibrary();
-            obj.blockEvents = {};
             obj.extensionStringIDs={};
             obj.extensionNumericIDs=[];
+            obj.blockEvents = {};
             
             if nargin<1
                 sys=mr.opts();
