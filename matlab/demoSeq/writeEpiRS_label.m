@@ -260,7 +260,7 @@ seq.setDefinition('ReceiverGainHigh',1);
 %seq.setDefinition('kSpaceCenterLine', Ny/2+1) ;
 seq.setDefinition('ReadoutOversamplingFactor',ro_os);
 seq.setDefinition('TargetGriddedSamples',Nx*ro_os); % number of samples after gridding (with oversamping)
-seq.setDefinition('TrapezoidGriddingParameters', [gx.riseTime gx.flatTime gx.fallTime adc.delay-gx.delay adc.duration]); % rise,flat,fall,adc_delay,adc_dur
+seq.setDefinition('TrapezoidGriddingParameters', [gx.riseTime gx.flatTime gx.fallTime adc.delay-gx.delay adc.duration]); % rise,flat,fall,adc_delay,adc_dur !!This definition may cause error in siemens_to_ismrmrd
 
 seq.write('epi_rs.seq'); 
 
