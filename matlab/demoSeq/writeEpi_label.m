@@ -55,7 +55,7 @@ slicePositions=slicePositions([1:2:Nslices 2:2:Nslices]); % reorder slices for a
 for r=1:Nreps
     seq.addBlock(trig, mr.makeLabel('SET','SLC', 0)); 
     for s=1:Nslices
-        rf.freqOffset=gz.amplitude*thickness*(s-1-(Nslices-1)/2);
+        rf.freqOffset=gz.amplitude*slicePositions(s);
         rf.phaseOffset=-2*pi*rf.freqOffset*mr.calcRfCenter(rf); % compensate for the slice-offset induced phase
         seq.addBlock(rf,gz);
         seq.addBlock(gxPre,gzReph, ...
